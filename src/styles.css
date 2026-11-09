@@ -1,0 +1,360 @@
+/* Tokens de cor e forma. Tema escuro único. */
+:root {
+  color-scheme: dark;
+  --bg-top: #14101f;
+  --bg-bottom: #1d1830;
+  --card: #251e3d;
+  --card-border: #3a3154;
+  --track: #4a3f6b;
+  --text: #f4efe7;
+  --text-muted: #c4bbd6;
+  --accent: #ffb45e;
+  --accent-hover: #ffc37d;
+  --accent-text: #1a1205;
+  --danger: #ff9b8f;
+  --radius: 18px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--bg-top);
+  background-image: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Arte de fundo fixa, escurecida para manter o texto legível. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, rgba(20, 16, 31, 0.35) 0%, rgba(20, 16, 31, 0.78) 100%),
+    url('./assets/bg.jpg') 52% 18% / cover no-repeat;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Esconde visualmente, mantendo acessível a leitores de tela e ao foco. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Layout mobile-first; no desktop a coluna só fica mais larga e centralizada. */
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  text-align: center;
+  padding-top: 8px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 9vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+}
+
+/* Botão principal Tocar / Pausar */
+.play-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 16px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25);
+  transition: background-color 150ms ease, transform 120ms ease;
+}
+
+.play-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.play-button:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+
+.play-button.playing {
+  animation: breathe 3.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25), 0 0 0 0 rgba(255, 180, 94, 0.45);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25), 0 0 0 14px rgba(255, 180, 94, 0);
+  }
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+  flex: none;
+}
+
+/* Cartões de controle */
+.card {
+  background: rgba(37, 30, 61, 0.74);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Grupo segmentado (role="radiogroup") */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.option {
+  position: relative;
+  display: flex;
+  cursor: pointer;
+}
+
+.option span {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 500;
+  user-select: none;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.option input:checked + span {
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+/* O foco fica no rádio escondido; o contorno vai para o texto visível. */
+.option input:focus-visible {
+  outline: none;
+}
+
+.option input:focus-visible + span {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Sliders de volume */
+.slider-row + .slider-row {
+  margin-top: 16px;
+}
+
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.label-row output {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) var(--fill, 50%),
+    var(--track) var(--fill, 50%)
+  );
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  margin-top: -11px;
+  border: 3px solid var(--bg-top);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+input[type='range']::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+input[type='range']::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+input[type='range']::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--bg-top);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+input[type='range']:focus-visible {
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+/* Ações secundárias e dicas */
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.secondary-button {
+  min-height: 44px;
+  padding: 10px 24px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Painel "Tocando agora" */
+.chord {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(2.2rem, 10vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.details {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+/* Mensagem de erro */
+.alert {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  background: rgba(255, 155, 143, 0.08);
+  color: var(--danger);
+}
+
+@media (hover: hover) {
+  .play-button:hover:not(:disabled) {
+    background: var(--accent-hover);
+  }
+
+  .secondary-button:hover {
+    background: rgba(255, 180, 94, 0.12);
+  }
+
+  .option:hover span {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

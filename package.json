@@ -1,0 +1,26 @@
+{
+  "name": "auto-rainjazz",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Jazz suave gerado em tempo real, no dispositivo, com chuva ao fundo.",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "^11.2.0",
+    "tone": "^15.1.22",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
+  }
+}
