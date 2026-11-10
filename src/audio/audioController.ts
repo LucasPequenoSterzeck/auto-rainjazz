@@ -1,8 +1,9 @@
 import * as Tone from 'tone'
 import { store, type AppState } from '../app/store'
 import type { AmbientKind, MusicKind, SleepMin } from '../app/types'
+import artworkUrl from '../assets/bg.jpg'
 import { AmbientEngine } from './ambient/ambientEngine'
-import { MusicEngine, type BarInfo } from './music/musicEngine'
+import { MusicEngine, type BarInfo, type Lineup } from './music/musicEngine'
 
 /** Entrada do fade-in ao dar play (s). */
 const FADE_IN_S = 0.4
@@ -15,6 +16,8 @@ const VOLUME_RAMP_S = 0.05
 /** Fade-out do timer de sono (s). Termina no minuto marcado. */
 const SLEEP_FADE_S = 15
 const MSG_ERRO_AUDIO = 'Não foi possível iniciar o áudio. Tente de novo.'
+const MSG_ERRO_SONS = 'Não foi possível carregar os sons dos instrumentos. Pause e toque de novo.'
+const MSG_ERRO_CHUVA = 'Não foi possível carregar o som da chuva. Escolha o ambiente de novo.'
 
 /** Grafo de áudio, criado de forma lazy no primeiro play(). */
 interface Graph {
@@ -31,6 +34,8 @@ let initing: Promise<Graph> | null = null
 let runToken = 0
 /** true quando o MusicEngine foi iniciado e ainda não foi parado. */
 let musicActive = false
+/** Formação que o MusicEngine está tocando (null se parado). */
+let activeLineup: Lineup | null = null
 /** Quantas operações de carregamento estão pendentes (para `loading`). */
 let busyCount = 0
 
@@ -39,10 +44,14 @@ let sleepFadeTimer: ReturnType<typeof setTimeout> | null = null
 let sleepPauseTimer: ReturnType<typeof setTimeout> | null = null
 
 const current = (): AppState => store.getState()
-const patch = (values: Partial<AppState>): void => store.setState(values)
+const patch = (values: Partial<AppState>): void => {
+  store.setState(values)
+}
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v))
 /** Volume do slider -> ganho (curva quadrática, mais perceptual). */
 const volumeToGain = (v: number): number => clamp01(v) * clamp01(v)
+/** Formação de instrumentos da escolha de música; null para 'none'. */
+const lineupOf = (kind: MusicKind): Lineup | null => (kind === 'none' ? null : kind)
 
 function beginBusy(): void {
   busyCount++
@@ -54,9 +63,45 @@ function endBusy(): void {
   patch({ loading: busyCount > 0 })
 }
 
-function reportError(erro: unknown): void {
+function reportError(erro: unknown, mensagem: string = MSG_ERRO_AUDIO): void {
   console.error('Falha no áudio:', erro)
-  patch({ error: MSG_ERRO_AUDIO })
+  patch({ error: mensagem })
+}
+
+/**
+ * Se o sistema suspender ou interromper o áudio (iOS, chamada, fone desconectado),
+ * a tela passa a mostrar "Tocar" em vez de continuar dizendo que está tocando.
+ * O próximo play() retoma o contexto.
+ */
+function onContextStateChange(): void {
+  if (Tone.getContext().state !== 'running' && current().playing) pause()
+}
+
+/** Controles do sistema (tela de bloqueio, teclas de mídia), onde o navegador oferece. */
+function setupMediaSession(): void {
+  if (!('mediaSession' in navigator)) return
+  const session = navigator.mediaSession
+  session.metadata = new MediaMetadata({
+    title: 'Auto Rainjazz',
+    artist: 'Jazz gerado em tempo real',
+    album: 'Com chuva ao fundo',
+    artwork: [{ src: artworkUrl, type: 'image/jpeg' }],
+  })
+  const handlers: [MediaSessionAction, MediaSessionActionHandler][] = [
+    ['play', () => void play().catch((erro: unknown) => console.error('Falha no play:', erro))],
+    ['pause', () => pause()],
+    ['stop', () => pause()],
+  ]
+  for (const [action, handler] of handlers) {
+    try {
+      session.setActionHandler(action, handler)
+    } catch {
+      // Ação não suportada neste navegador: ignora.
+    }
+  }
+  store.subscribe((s) => {
+    session.playbackState = s.playing ? 'playing' : 'paused'
+  })
 }
 
 /** Cria o grafo de áudio uma única vez. Precisa estar em um gesto do usuário (play). */
@@ -68,11 +113,13 @@ async function buildGraph(): Promise<Graph> {
   const { ambientVol, musicVol } = current()
   const ambientBus = new Tone.Gain(volumeToGain(ambientVol)).connect(master)
   const musicBus = new Tone.Gain(volumeToGain(musicVol)).connect(master)
+  Tone.getContext().on('statechange', onContextStateChange)
+  setupMediaSession()
   return {
     master,
     ambientBus,
     musicBus,
-    ambient: new AmbientEngine(ambientBus),
+    ambient: new AmbientEngine(ambientBus, (erro: unknown) => reportError(erro, MSG_ERRO_CHUVA)),
     music: new MusicEngine(musicBus),
   }
 }
@@ -98,16 +145,11 @@ function onBar(info: BarInfo): void {
   patch({ nowChord: info.chord, nowKey: info.key, nowProg: info.prog, bpm: info.bpm })
 }
 
-/** Inicia o MusicEngine com a seed atual. Supõe o grafo criado e o piano carregado. */
-function startMusicNow(g: Graph): void {
-  g.music.start(current().seed, onBar)
-  musicActive = true
-}
-
 /** Para a música e limpa a exibição. Idempotente. */
 function stopMusic(): void {
   if (musicActive && graph !== null) graph.music.stop()
   musicActive = false
+  activeLineup = null
   patch({ nowChord: '', nowKey: '', nowProg: '', bpm: 0 })
 }
 
@@ -137,8 +179,11 @@ function clearSleepTimers(): void {
 
 /** Arma o timer de sono: fade-out de 15 s terminando no minuto escolhido, depois pause(). */
 function armSleepTimer(): void {
+  // Rearmado no meio do fade-out final: devolve o volume, senão ficaria "tocando" em silêncio.
+  const wasFading = sleepPauseTimer !== null
   clearSleepTimers()
   const { sleepMin, playing } = current()
+  if (wasFading && playing) graph?.master.gain.rampTo(1, FADE_IN_S)
   if (sleepMin <= 0 || !playing) return
   const fadeAtMs = sleepMin * 60_000 - SLEEP_FADE_S * 1000
   sleepFadeTimer = setTimeout(() => {
@@ -153,23 +198,35 @@ function armSleepTimer(): void {
   }, fadeAtMs)
 }
 
-/** Pode a música começar agora? Falso se houve pausa/troca no meio do carregamento. */
-function canStartMusic(token: number): boolean {
-  const s = current()
-  return token === runToken && s.playing && s.music === 'piano' && !musicActive
-}
-
-/** Carrega o piano e inicia a música, se ainda fizer sentido. Usado por setMusic e newSeed. */
-async function startMusicWhilePlaying(): Promise<void> {
+/**
+ * Faz a música tocando corresponder à escolha atual: inicia, troca a formação
+ * (piano ↔ piano + violino) ou não faz nada. Carrega os samples que faltarem.
+ * Depois de cada espera, confere de novo o estado: se o usuário pausou ou mudou
+ * a escolha no meio do carregamento, desiste (quem mudou cuida do novo estado).
+ */
+async function syncMusic(): Promise<void> {
+  const lineup = lineupOf(current().music)
+  if (lineup === null || !current().playing) return
+  if (musicActive && activeLineup === lineup) return
   const token = runToken
   beginBusy()
   try {
     const g = await ensureGraph()
-    await g.music.load()
-    if (!canStartMusic(token)) return
-    startMusicNow(g)
+    await g.music.load(lineup)
+    const s = current()
+    if (token !== runToken || !s.playing || s.music !== lineup) return
+    if (!musicActive) {
+      g.music.start(s.seed, lineup, onBar)
+      musicActive = true
+    } else if (activeLineup !== lineup) {
+      g.music.setLineup(lineup)
+    }
+    activeLineup = lineup
   } catch (erro: unknown) {
-    reportError(erro)
+    if (token !== runToken) return
+    reportError(erro, MSG_ERRO_SONS)
+    // Se a música já tocava, a escolha volta para o que de fato está soando.
+    if (activeLineup !== null && current().music === lineup) patch({ music: activeLineup })
   } finally {
     endBusy()
   }
@@ -183,18 +240,19 @@ export async function play(): Promise<void> {
   clearPauseStop()
   beginBusy()
   patch({ error: undefined })
+  // Retoma o contexto ainda dentro do gesto do usuário (o sistema pode tê-lo suspendido).
+  const resumed = Tone.start()
   try {
+    await resumed
     const g = await ensureGraph()
     if (token !== runToken) return
     g.master.gain.rampTo(1, FADE_IN_S)
     g.ambient.set(current().ambient)
-    if (current().music === 'piano' && !musicActive) {
-      await g.music.load()
-      if (token !== runToken) return
-      startMusicNow(g)
-    }
+    // `playing` já é true durante o carregamento dos samples: trocas de ambiente
+    // e de música feitas nesse intervalo valem na hora.
     patch({ playing: true })
     armSleepTimer()
+    await syncMusic()
   } catch (erro: unknown) {
     if (token !== runToken) return
     reportError(erro)
@@ -230,8 +288,7 @@ export async function setMusic(kind: MusicKind): Promise<void> {
     stopMusic()
     return
   }
-  if (!current().playing) return
-  await startMusicWhilePlaying()
+  await syncMusic()
 }
 
 export function setAmbientVolume(v: number): void {
@@ -249,9 +306,9 @@ export function setMusicVolume(v: number): void {
 /** Nova seed: outro tom e progressão. Se a música estiver tocando, reinicia com ela. */
 export async function newSeed(): Promise<void> {
   patch({ seed: Math.floor(Math.random() * 2 ** 32) })
-  if (current().playing && current().music === 'piano') {
+  if (current().playing && current().music !== 'none') {
     stopMusic()
-    await startMusicWhilePlaying()
+    await syncMusic()
   }
 }
 

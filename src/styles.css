@@ -143,9 +143,8 @@ body::before {
 
 /* Cartões de controle */
 .card {
-  background: rgba(37, 30, 61, 0.74);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  /* Sem backdrop-filter: o blur sobre o fundo fixo custava muita GPU. Fundo mais opaco no lugar. */
+  background: rgba(37, 30, 61, 0.88);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
   padding: 16px;

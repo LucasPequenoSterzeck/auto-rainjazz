@@ -1,8 +1,8 @@
 import * as Tone from 'tone'
 import { midiToName } from '../theory/notes'
 
-/** Pasta hospedada dos samples Salamander (Tone.js). */
-const BASE_URL = 'https://tonejs.github.io/audio/salamander/'
+/** Pasta local dos samples Salamander (servidos pelo próprio app, em `public/samples/`). */
+const BASE_URL = `${import.meta.env.BASE_URL}samples/salamander/`
 /** Amostragem: um sample a cada 3 semitons, de C2 (36) a C7 (96). */
 const FIRST_MIDI = 36
 const LAST_MIDI = 96
@@ -11,9 +11,6 @@ const SAMPLE_STEP = 3
 const RELEASE_S = 1.2
 /** Filtro passa-baixas de cor do piano (Hz). */
 const FILTER_HZ = 5200
-/** Reverberação suave. */
-const ROOM_SIZE = 0.5
-const REVERB_WET = 0.3
 
 /**
  * Mapa `urls` do Sampler: a chave é o nome da nota com '#' ("D#2"),
@@ -29,13 +26,14 @@ function buildUrls(): Record<string, string> {
 }
 
 /**
- * Piano por amostras (Salamander). Cadeia: sampler -> passa-baixas -> reverb -> `out`.
+ * Piano por amostras (Salamander). Cadeia: sampler -> passa-baixas -> `out`.
+ * A reverberação fica a cargo do `out` (reverb compartilhado no MusicEngine), para não
+ * gastar CPU com um reverb por instrumento.
  * Os samples só são baixados em `load()`.
  */
 export class Piano {
   private readonly sampler: Tone.Sampler
   private readonly filter: Tone.Filter
-  private readonly reverb: Tone.JCReverb
   private readonly ready: Promise<void>
   private resolveReady: () => void = () => undefined
   private rejectReady: (erro: Error) => void = () => undefined
@@ -56,11 +54,9 @@ export class Piano {
       onerror: (erro: Error) => this.rejectReady(erro),
     })
     this.filter = new Tone.Filter({ type: 'lowpass', frequency: FILTER_HZ })
-    this.reverb = new Tone.JCReverb({ roomSize: ROOM_SIZE, wet: REVERB_WET })
 
     this.sampler.connect(this.filter)
-    this.filter.connect(this.reverb)
-    this.reverb.connect(out)
+    this.filter.connect(out)
   }
 
   /** Resolve quando todos os samples estiverem carregados; rejeita em falha de download. */
@@ -81,6 +77,5 @@ export class Piano {
   dispose(): void {
     this.sampler.dispose()
     this.filter.dispose()
-    this.reverb.dispose()
   }
 }

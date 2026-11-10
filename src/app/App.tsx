@@ -27,6 +27,7 @@ const AMBIENT_OPTIONS: readonly Option<AmbientKind>[] = [
 const MUSIC_OPTIONS: readonly Option<MusicKind>[] = [
   { value: 'none', label: 'Nenhuma' },
   { value: 'piano', label: 'Piano' },
+  { value: 'pianoViolin', label: 'Piano + violino' },
 ]
 
 const SLEEP_OPTIONS: readonly Option<SleepMin>[] = [
