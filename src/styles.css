@@ -1,11 +1,16 @@
-/* Tokens de cor e forma. Tema escuro único. */
+/*
+ * Tokens de cor e forma. Tema escuro único, de propósito: app de escuta noturna, onde a interface
+ * deve recuar (dark-mode.md › Best practices: aparência escura fixa para mídia imersiva).
+ */
 :root {
   color-scheme: dark;
   --bg-top: #14101f;
   --bg-bottom: #1d1830;
   --card: #251e3d;
   --card-border: #3a3154;
-  --track: #4a3f6b;
+  /* Trilho dos sliders: ~3.4:1 contra o cartão (contraste mínimo de 3:1 para controles). */
+  --track: #7a7296;
+  --separator: rgba(255, 255, 255, 0.12);
   --text: #f4efe7;
   --text-muted: #c4bbd6;
   --accent: #ffb45e;
@@ -28,8 +33,10 @@ body {
   background-color: var(--bg-top);
   background-image: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
   color: var(--text);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.45;
+  font-family: system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* 17 px: tamanho de corpo padrão no iOS (typography.md). rem respeita o ajuste de texto do usuário. */
+  font-size: 1.0625rem;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -70,24 +77,26 @@ body::before {
   padding: 24px 16px 48px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .header {
-  text-align: center;
-  padding-top: 8px;
+  padding: 8px 4px 0;
 }
 
+/* Título grande, alinhado à esquerda, como a barra de navegação do iOS. */
 .header h1 {
   margin: 0;
-  font-size: clamp(2rem, 9vw, 2.6rem);
+  font-size: clamp(2rem, 9vw, 2.125rem);
   font-weight: 700;
-  letter-spacing: 0.01em;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--text-muted);
+  font-size: 0.9375rem;
 }
 
 /* Botão principal Tocar / Pausar */
@@ -97,17 +106,16 @@ body::before {
   justify-content: center;
   gap: 12px;
   width: 100%;
-  min-height: 72px;
-  padding: 16px 24px;
+  min-height: 56px;
+  padding: 12px 24px;
   border: 0;
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-text);
   font: inherit;
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.0625rem;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25);
   transition: background-color 150ms ease, transform 120ms ease;
 }
 
@@ -127,46 +135,88 @@ body::before {
 @keyframes breathe {
   0%,
   100% {
-    box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25), 0 0 0 0 rgba(255, 180, 94, 0.45);
+    box-shadow: 0 0 0 0 rgba(255, 180, 94, 0.4);
   }
   50% {
-    box-shadow: 0 10px 30px rgba(255, 180, 94, 0.25), 0 0 0 14px rgba(255, 180, 94, 0);
+    box-shadow: 0 0 0 12px rgba(255, 180, 94, 0);
   }
 }
 
 .icon {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   fill: currentColor;
   flex: none;
 }
 
-/* Cartões de controle */
-.card {
+/* Cartão de destaque: o que está tocando + Tocar/Pausar. */
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
   /* Sem backdrop-filter: o blur sobre o fundo fixo custava muita GPU. Fundo mais opaco no lugar. */
   background: rgba(37, 30, 61, 0.88);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius);
-  padding: 16px;
+  text-align: center;
 }
 
-.card h2 {
-  margin: 0 0 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.hero h2 {
+  margin: 0;
   color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hero .play-button {
+  margin-top: 16px;
+}
+
+/* Seção "inset grouped": título pequeno acima, grupo arredondado, nota abaixo. */
+.section h2 {
+  margin: 0 0 8px 16px;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  background: rgba(37, 30, 61, 0.88);
+}
+
+.footer {
+  margin: 8px 16px 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  margin: 8px 0;
+  border: 0;
+  background: var(--separator);
 }
 
 /* Grupo segmentado (role="radiogroup") */
 .segmented {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
   gap: 6px;
   padding: 4px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .option {
@@ -181,9 +231,10 @@ body::before {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  padding: 8px 12px;
+  padding: 8px 6px;
   border-radius: 10px;
   text-align: center;
+  font-size: 0.9375rem;
   font-weight: 500;
   user-select: none;
   transition: background-color 150ms ease, color 150ms ease;
@@ -206,8 +257,30 @@ body::before {
 }
 
 /* Sliders de volume */
-.slider-row + .slider-row {
-  margin-top: 16px;
+.slider-row {
+  padding: 0 4px;
+}
+
+.slider-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider-line input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.speaker {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .label-row {
@@ -215,7 +288,7 @@ body::before {
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
 }
 
 .label-row output {
@@ -283,45 +356,38 @@ input[type='range']:focus-visible {
   border-radius: 999px;
 }
 
-/* Ações secundárias e dicas */
-.actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.secondary-button {
+/* Botão em linha, estilo lista: ocupa a largura do grupo, texto na cor de ação. */
+.row-button {
   min-height: 44px;
-  padding: 10px 24px;
-  border: 1px solid var(--accent);
-  border-radius: 999px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
   background: transparent;
   color: var(--accent);
   font: inherit;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
 }
 
-.hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  text-align: center;
+.row-button:active {
+  background: rgba(255, 255, 255, 0.08);
 }
 
-/* Painel "Tocando agora" */
+/* Acorde em destaque */
 .chord {
   margin: 0;
   color: var(--accent);
-  font-size: clamp(2.2rem, 10vw, 2.8rem);
+  font-size: clamp(2.75rem, 14vw, 3.5rem);
   font-weight: 700;
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .details {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--text-muted);
+  font-size: 0.9375rem;
 }
 
 /* Mensagem de erro */
@@ -339,8 +405,8 @@ input[type='range']:focus-visible {
     background: var(--accent-hover);
   }
 
-  .secondary-button:hover {
-    background: rgba(255, 180, 94, 0.12);
+  .row-button:hover {
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .option:hover span {
@@ -355,5 +421,14 @@ input[type='range']:focus-visible {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Contraste aumentado: bordas e trilhos mais fortes, texto secundário mais claro. */
+@media (prefers-contrast: more) {
+  :root {
+    --text-muted: #e6e0f0;
+    --card-border: #8b81ad;
+    --track: #a89fc4;
   }
 }

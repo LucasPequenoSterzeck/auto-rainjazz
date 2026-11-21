@@ -21,7 +21,10 @@ const MSG_ERRO_CHUVA = 'Não foi possível carregar o som da chuva. Escolha o am
 
 /** Grafo de áudio, criado de forma lazy no primeiro play(). */
 interface Graph {
+  /** Fade de play/pause e do timer de sono. */
   master: Tone.Gain
+  /** Volume geral escolhido pela pessoa; fica depois do fade para os dois não se atropelarem. */
+  masterVolume: Tone.Gain
   ambientBus: Tone.Gain
   musicBus: Tone.Gain
   ambient: AmbientEngine
@@ -109,7 +112,8 @@ async function buildGraph(): Promise<Graph> {
   await Tone.start()
   const limiter = new Tone.Limiter(-1).toDestination()
   // Começa em 0: o fade-in de play() sobe até 1.
-  const master = new Tone.Gain(0).connect(limiter)
+  const masterVolume = new Tone.Gain(volumeToGain(current().masterVol)).connect(limiter)
+  const master = new Tone.Gain(0).connect(masterVolume)
   const { ambientVol, musicVol } = current()
   const ambientBus = new Tone.Gain(volumeToGain(ambientVol)).connect(master)
   const musicBus = new Tone.Gain(volumeToGain(musicVol)).connect(master)
@@ -117,6 +121,7 @@ async function buildGraph(): Promise<Graph> {
   setupMediaSession()
   return {
     master,
+    masterVolume,
     ambientBus,
     musicBus,
     ambient: new AmbientEngine(ambientBus, (erro: unknown) => reportError(erro, MSG_ERRO_CHUVA)),
@@ -289,6 +294,12 @@ export async function setMusic(kind: MusicKind): Promise<void> {
     return
   }
   await syncMusic()
+}
+
+export function setMasterVolume(v: number): void {
+  const level = clamp01(v)
+  patch({ masterVol: level })
+  graph?.masterVolume.gain.rampTo(volumeToGain(level), VOLUME_RAMP_S)
 }
 
 export function setAmbientVolume(v: number): void {

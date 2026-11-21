@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact'
 import { useStore } from './store'
 import type { AmbientKind, MusicKind, SleepMin } from './types'
 import {
@@ -6,6 +7,7 @@ import {
   play,
   setAmbient,
   setAmbientVolume,
+  setMasterVolume,
   setMusic,
   setMusicVolume,
   setSleepTimer,
@@ -39,6 +41,10 @@ const SLEEP_OPTIONS: readonly Option<SleepMin>[] = [
 
 const ICON_PLAY = 'M8 5v14l11-7z'
 const ICON_PAUSE = 'M6 5h4v14H6zM14 5h4v14h-4z'
+/** Alto-falante (corpo) + ondas; mesmo traço de 2 px nos dois ícones, para casar com o texto. */
+const ICON_SPEAKER = 'M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z'
+const ICON_WAVE_LOW = 'M15.5 9.5a3.5 3.5 0 0 1 0 5'
+const ICON_WAVE_HIGH = 'M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10'
 
 /**
  * Trata ações assíncronas do controlador. Erros de áudio já são gravados em `error`
@@ -100,7 +106,12 @@ function OptionGroup<T extends string | number>({
   onSelect,
 }: OptionGroupProps<T>) {
   return (
-    <div class="segmented" role="radiogroup" aria-labelledby={labelledBy}>
+    <div
+      class="segmented"
+      role="radiogroup"
+      aria-labelledby={labelledBy}
+      style={`--n: ${options.length}`}
+    >
       {options.map((option) => (
         <label class="option" key={String(option.value)}>
           <input
@@ -118,16 +129,33 @@ function OptionGroup<T extends string | number>({
   )
 }
 
+interface SpeakerProps {
+  /** true = volume alto (duas ondas); false = baixo (uma onda). */
+  loud: boolean
+}
+
+/** Ícone decorativo nas pontas do slider (o rótulo do slider já diz o que ele controla). */
+function Speaker({ loud }: SpeakerProps) {
+  return (
+    <svg class="speaker" viewBox="0 0 24 24" aria-hidden="true">
+      <path d={ICON_SPEAKER} />
+      <path d={loud ? ICON_WAVE_HIGH : ICON_WAVE_LOW} />
+    </svg>
+  )
+}
+
 interface VolumeSliderProps {
   id: string
   label: string
   /** 0..1 */
   value: number
   onChange: (value: number) => void
+  /** Mostra os ícones de volume baixo/alto nas pontas (HIG › Sliders). */
+  icons?: boolean
 }
 
 /** Slider 0..1 com rótulo visível e valor em porcentagem. */
-function VolumeSlider({ id, label, value, onChange }: VolumeSliderProps) {
+function VolumeSlider({ id, label, value, onChange, icons = false }: VolumeSliderProps) {
   const percent = Math.round(value * 100)
   return (
     <div class="slider-row">
@@ -135,23 +163,47 @@ function VolumeSlider({ id, label, value, onChange }: VolumeSliderProps) {
         <label htmlFor={id}>{label}</label>
         <output htmlFor={id}>{percent}%</output>
       </div>
-      <input
-        id={id}
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={value}
-        aria-valuetext={`${percent}%`}
-        style={`--fill: ${percent}%`}
-        onInput={(event) => onChange(Number(event.currentTarget.value))}
-      />
+      <div class="slider-line">
+        {icons && <Speaker loud={false} />}
+        <input
+          id={id}
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={value}
+          aria-valuetext={`${percent}%`}
+          style={`--fill: ${percent}%`}
+          onInput={(event) => onChange(Number(event.currentTarget.value))}
+        />
+        {icons && <Speaker loud />}
+      </div>
     </div>
   )
 }
 
-/** Painel "Tocando agora": acorde em destaque e detalhes (tonalidade · progressão · BPM). */
-function NowPlaying() {
+interface SectionProps {
+  /** id do título; rotula o grupo para leitores de tela. */
+  id: string
+  title: string
+  /** Texto de apoio abaixo do grupo. */
+  footer?: string
+  children: ComponentChildren
+}
+
+/** Grupo no estilo "inset grouped": título pequeno fora do cartão, controles dentro. */
+function Section({ id, title, footer, children }: SectionProps) {
+  return (
+    <section class="section" aria-labelledby={id}>
+      <h2 id={id}>{title}</h2>
+      <div class="group">{children}</div>
+      {footer && <p class="footer">{footer}</p>}
+    </section>
+  )
+}
+
+/** Cartão de destaque: acorde atual, detalhes e o botão Tocar/Pausar. */
+function Hero() {
   const nowChord = useStore((s) => s.nowChord)
   const nowKey = useStore((s) => s.nowKey)
   const nowProg = useStore((s) => s.nowProg)
@@ -160,10 +212,11 @@ function NowPlaying() {
   const detalhes = [nowKey, nowProg, bpm > 0 ? `${bpm} BPM` : ''].filter((item) => item !== '')
 
   return (
-    <section class="card" aria-labelledby="title-now-playing">
+    <section class="hero" aria-labelledby="title-now-playing">
       <h2 id="title-now-playing">Tocando agora</h2>
       <p class="chord">{nowChord || '—'}</p>
-      {detalhes.length > 0 && <p class="details">{detalhes.join(' · ')}</p>}
+      <p class="details">{detalhes.length > 0 ? detalhes.join(' · ') : 'Toque para começar'}</p>
+      <PlayButton />
     </section>
   )
 }
@@ -173,6 +226,7 @@ export function App() {
   const ambient = useStore((s) => s.ambient)
   const music = useStore((s) => s.music)
   const sleepMin = useStore((s) => s.sleepMin)
+  const masterVol = useStore((s) => s.masterVol)
   const ambientVol = useStore((s) => s.ambientVol)
   const musicVol = useStore((s) => s.musicVol)
   const error = useStore((s) => s.error)
@@ -184,7 +238,7 @@ export function App() {
         <p class="subtitle">Jazz suave gerado em tempo real, com chuva ao fundo.</p>
       </header>
 
-      <PlayButton />
+      <Hero />
 
       {error && (
         <p class="alert" role="alert">
@@ -192,8 +246,30 @@ export function App() {
         </p>
       )}
 
-      <section class="card" aria-labelledby="title-ambient">
-        <h2 id="title-ambient">Ambiente</h2>
+      <Section id="title-volumes" title="Volume">
+        <VolumeSlider
+          id="master-volume"
+          label="Volume geral"
+          value={masterVol}
+          onChange={setMasterVolume}
+          icons
+        />
+        <hr class="divider" />
+        <VolumeSlider
+          id="ambient-volume"
+          label="Ambiente"
+          value={ambientVol}
+          onChange={setAmbientVolume}
+        />
+        <VolumeSlider
+          id="music-volume"
+          label="Música"
+          value={musicVol}
+          onChange={setMusicVolume}
+        />
+      </Section>
+
+      <Section id="title-ambient" title="Ambiente">
         <OptionGroup
           name="ambient"
           labelledBy="title-ambient"
@@ -201,10 +277,9 @@ export function App() {
           selected={ambient}
           onSelect={setAmbient}
         />
-      </section>
+      </Section>
 
-      <section class="card" aria-labelledby="title-music">
-        <h2 id="title-music">Música</h2>
+      <Section id="title-music" title="Música">
         <OptionGroup
           name="music"
           labelledBy="title-music"
@@ -212,26 +287,13 @@ export function App() {
           selected={music}
           onSelect={(value) => tratarPromessa(setMusic(value))}
         />
-      </section>
+      </Section>
 
-      <section class="card" aria-labelledby="title-volumes">
-        <h2 id="title-volumes">Volumes</h2>
-        <VolumeSlider
-          id="ambient-volume"
-          label="Volume do ambiente"
-          value={ambientVol}
-          onChange={setAmbientVolume}
-        />
-        <VolumeSlider
-          id="music-volume"
-          label="Volume da música"
-          value={musicVol}
-          onChange={setMusicVolume}
-        />
-      </section>
-
-      <section class="card" aria-labelledby="title-sleep">
-        <h2 id="title-sleep">Timer de sono</h2>
+      <Section
+        id="title-sleep"
+        title="Timer de sono"
+        footer="O som diminui aos poucos e pausa no tempo escolhido."
+      >
         <OptionGroup
           name="sleep"
           labelledBy="title-sleep"
@@ -239,23 +301,17 @@ export function App() {
           selected={sleepMin}
           onSelect={setSleepTimer}
         />
-      </section>
+      </Section>
 
-      <div class="actions">
-        <button
-          type="button"
-          class="secondary-button"
-          aria-describedby="seed-hint"
-          onClick={() => tratarPromessa(newSeed())}
-        >
+      <Section
+        id="title-generate"
+        title="Composição"
+        footer="Recomeça com outro tom e outra progressão."
+      >
+        <button type="button" class="row-button" onClick={() => tratarPromessa(newSeed())}>
           Nova semente
         </button>
-        <p id="seed-hint" class="hint">
-          Recomeça com outro tom e outra progressão.
-        </p>
-      </div>
-
-      <NowPlaying />
+      </Section>
     </main>
   )
 }

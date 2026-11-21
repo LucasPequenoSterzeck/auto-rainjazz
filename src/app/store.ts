@@ -10,6 +10,8 @@ export interface AppState {
   error?: string
   ambient: AmbientKind
   music: MusicKind
+  /** Volume geral, 0..1 (multiplica ambiente e música). */
+  masterVol: number
   /** 0..1 */
   ambientVol: number
   /** 0..1 */
@@ -26,7 +28,7 @@ export interface AppState {
 }
 
 /** Preferências guardadas no navegador entre visitas. */
-type Prefs = Pick<AppState, 'ambient' | 'music' | 'ambientVol' | 'musicVol' | 'sleepMin'>
+type Prefs = Pick<AppState, 'ambient' | 'music' | 'masterVol' | 'ambientVol' | 'musicVol' | 'sleepMin'>
 
 const AMBIENTS: readonly AmbientKind[] = ['none', 'wind', 'lightRain', 'rain']
 const MUSICS: readonly MusicKind[] = ['none', 'piano', 'pianoViolin']
@@ -50,6 +52,7 @@ function mergePrefs(saved: unknown, initial: AppState): AppState {
     ...initial,
     ambient: oneOf(AMBIENTS, s.ambient, initial.ambient),
     music: oneOf(MUSICS, s.music, initial.music),
+    masterVol: volumeOr(s.masterVol, initial.masterVol),
     ambientVol: volumeOr(s.ambientVol, initial.ambientVol),
     musicVol: volumeOr(s.musicVol, initial.musicVol),
     sleepMin: oneOf(SLEEPS, s.sleepMin, initial.sleepMin),
@@ -64,6 +67,7 @@ export const store = createStore<AppState>()(
       error: undefined,
       ambient: 'lightRain' as AmbientKind,
       music: 'piano' as MusicKind,
+      masterVol: 0.8,
       ambientVol: 0.3,
       musicVol: 0.6,
       seed: Math.floor(Math.random() * 2 ** 32),
@@ -81,6 +85,7 @@ export const store = createStore<AppState>()(
       partialize: (s): Prefs => ({
         ambient: s.ambient,
         music: s.music,
+        masterVol: s.masterVol,
         ambientVol: s.ambientVol,
         musicVol: s.musicVol,
         sleepMin: s.sleepMin,
