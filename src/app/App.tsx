@@ -1,4 +1,6 @@
 import type { ComponentChildren } from 'preact'
+import avatarUrl from '../assets/kit/avatar.png'
+import sleepUrl from '../assets/kit/pose-dormindo.png'
 import { useStore } from './store'
 import type { AmbientKind, MusicKind, SleepMin } from './types'
 import {
@@ -79,7 +81,7 @@ function PlayButton() {
       disabled={loading}
       onClick={alternar}
     >
-      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <svg key={playing ? 'pause' : 'play'} class="icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d={playing ? ICON_PAUSE : ICON_PLAY} />
       </svg>
       <span>{rotulo}</span>
@@ -188,16 +190,23 @@ interface SectionProps {
   title: string
   /** Texto de apoio abaixo do grupo. */
   footer?: string
+  /** Ilustração decorativa ao lado da nota (sem texto alternativo). */
+  art?: string
   children: ComponentChildren
 }
 
 /** Grupo no estilo "inset grouped": título pequeno fora do cartão, controles dentro. */
-function Section({ id, title, footer, children }: SectionProps) {
+function Section({ id, title, footer, art, children }: SectionProps) {
   return (
     <section class="section" aria-labelledby={id}>
       <h2 id={id}>{title}</h2>
       <div class="group">{children}</div>
-      {footer && <p class="footer">{footer}</p>}
+      {(footer || art) && (
+        <div class="footer-row">
+          {footer && <p class="footer">{footer}</p>}
+          {art && <img class="art" src={art} alt="" width="96" loading="lazy" />}
+        </div>
+      )}
     </section>
   )
 }
@@ -214,7 +223,9 @@ function Hero() {
   return (
     <section class="hero" aria-labelledby="title-now-playing">
       <h2 id="title-now-playing">Tocando agora</h2>
-      <p class="chord">{nowChord || '—'}</p>
+      <p class="chord" key={nowChord}>
+        {nowChord || '—'}
+      </p>
       <p class="details">{detalhes.length > 0 ? detalhes.join(' · ') : 'Toque para começar'}</p>
       <PlayButton />
     </section>
@@ -234,8 +245,11 @@ export function App() {
   return (
     <main class="app">
       <header class="header">
-        <h1>Auto Rainjazz</h1>
-        <p class="subtitle">Jazz suave gerado em tempo real, com chuva ao fundo.</p>
+        <img class="avatar" src={avatarUrl} alt="" width="56" height="56" />
+        <div>
+          <h1>Auto Rainjazz</h1>
+          <p class="subtitle">Jazz suave gerado em tempo real, com chuva ao fundo.</p>
+        </div>
       </header>
 
       <Hero />
@@ -293,6 +307,7 @@ export function App() {
         id="title-sleep"
         title="Timer de sono"
         footer="O som diminui aos poucos e pausa no tempo escolhido."
+        art={sleepUrl}
       >
         <OptionGroup
           name="sleep"
