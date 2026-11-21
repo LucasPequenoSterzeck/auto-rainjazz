@@ -1,26 +1,31 @@
 /*
- * Tokens de cor e forma. Tema escuro único, de propósito: app de escuta noturna, onde a interface
- * deve recuar (dark-mode.md › Best practices: aparência escura fixa para mídia imersiva).
+ * Tokens. Tema escuro único, de propósito: app de escuta noturna, a interface recua e a arte
+ * fica à vista (dark-mode.md › Best practices: aparência escura fixa para mídia imersiva).
+ *
+ * Papéis de cor (contraste medido, ver README):
+ *   --surface  #1D1830  vidro dos cartões e da base
+ *   --content  #F4EFE7  texto e controles de seleção   (15,0:1 sobre --surface)
+ *   --muted    #C4BBD6  texto secundário               ( 9,3:1)
+ *   --accent   #FFB45E  SOM LIGADO: acorde e Tocar/Pausar (10,6:1 sobre #14101F). Só isso.
+ *   --signal   #FF9B8F  erro                           ( 8,4:1)
  */
 :root {
   color-scheme: dark;
-  --bg-top: #14101f;
-  --bg-bottom: #1d1830;
-  --card: #251e3d;
-  --card-border: #3a3154;
-  /* Trilho dos sliders: ~3.4:1 contra o cartão (contraste mínimo de 3:1 para controles). */
-  --track: #7a7296;
-  --separator: rgba(255, 255, 255, 0.12);
-  --text: #f4efe7;
-  --text-muted: #c4bbd6;
+  --bg: #14101f;
+  --surface: #1d1830;
+  --glass: rgba(29, 24, 48, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --content: #f4efe7;
+  --muted: #c4bbd6;
   --accent: #ffb45e;
-  --accent-hover: #ffc37d;
   --accent-text: #1a1205;
-  --danger: #ff9b8f;
-  --radius: 18px;
-  /* Curvas de movimento: saída suave e mola leve (motion.md: breve, com propósito). */
+  --signal: #ff9b8f;
+  /* Trilho: 4,8:1 contra o vidro; preenchimento claro sobre ele: 3,2:1 (mínimo de 3:1 em controles). */
+  --track: #8a82a6;
+  --radius: 20px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dock-h: 96px;
 }
 
 *,
@@ -33,25 +38,34 @@ body {
   margin: 0;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--bg-top);
-  background-image: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-  color: var(--text);
-  font-family: system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  /* 17 px: tamanho de corpo padrão no iOS (typography.md). rem respeita o ajuste de texto do usuário. */
+  background-color: var(--bg);
+  color: var(--content);
+  font-family: system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  /* 17 px: corpo padrão no iOS. Em rem para respeitar o ajuste de texto do navegador. */
   font-size: 1.0625rem;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Arte de fundo fixa, escurecida para manter o texto legível. */
+/*
+ * Arte fixa ao fundo. O véu escurece só de cima para baixo: o rosto fica limpo, o acorde (abaixo)
+ * e os cartões ganham contraste.
+ */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(180deg, rgba(20, 16, 31, 0.35) 0%, rgba(20, 16, 31, 0.78) 100%),
-    url('./assets/bg.jpg') 52% 18% / cover no-repeat;
+    linear-gradient(
+      180deg,
+      rgba(20, 16, 31, 0.1) 0%,
+      rgba(20, 16, 31, 0.15) 30%,
+      rgba(20, 16, 31, 0.8) 62%,
+      rgba(20, 16, 31, 0.94) 100%
+    ),
+    url('./assets/bg.jpg') 52% 0% / cover no-repeat;
 }
 
 :focus-visible {
@@ -59,7 +73,6 @@ body::before {
   outline-offset: 3px;
 }
 
-/* Esconde visualmente, mantendo acessível a leitores de tela e ao foco. */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -76,187 +89,148 @@ body::before {
 /* Layout mobile-first; no desktop a coluna só fica mais larga e centralizada. */
 .app {
   max-width: 520px;
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: max(12px, env(safe-area-inset-top)) 16px calc(var(--dock-h) + 24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
-.header {
+/* Barra superior: nome do app e a única ação da tela (nova semente). */
+.bar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 4px 0;
+  justify-content: space-between;
+  min-height: 44px;
 }
 
-.avatar {
-  width: 56px;
-  height: 56px;
-  flex: none;
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 0 0 2px var(--accent);
-}
-
-/* Título grande, alinhado à esquerda, como a barra de navegação do iOS. */
-.header h1 {
+.bar h1 {
   margin: 0;
-  font-size: clamp(2rem, 9vw, 2.125rem);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 
-.subtitle {
-  margin: 4px 0 0;
-  color: var(--text-muted);
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  color: var(--content);
+  cursor: pointer;
+  transition: transform 250ms var(--spring);
+}
+
+.icon-button:active {
+  transform: scale(0.92);
+}
+
+.icon-line {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-line circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+/*
+ * Palco: a arte ocupa o alto da primeira tela; o acorde, o dado que muda, fica logo abaixo do rosto.
+ * Esta é a assinatura do app: um acorde enorme que se renova a cada compasso.
+ */
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  /* Altura fixa: o layout não pula entre parado (convite) e tocando (acorde). */
+  min-height: 7.25rem;
+  /* Deixa o rosto à mostra; acompanha a altura da janela. */
+  margin-top: clamp(140px, 36dvh, 340px);
+  text-align: center;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.55);
+}
+
+.chord {
+  margin: 0;
+  color: var(--content);
+  font-size: clamp(4rem, 22vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  /* Recriado a cada troca de acorde (key no JSX): entra subindo e clareando. */
+  animation: chord-in 450ms var(--ease-out);
+}
+
+/* O acento significa "som ligado": o acorde só ganha a cor quando está tocando. */
+.stage.playing .chord {
+  color: var(--accent);
+}
+
+.idle {
+  margin: 0;
+  color: var(--content);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.details {
+  margin: 0;
+  color: var(--muted);
   font-size: 0.9375rem;
 }
 
-/* Botão principal Tocar / Pausar */
-.play-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 56px;
-  padding: 12px 24px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font: inherit;
-  font-size: 1.0625rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 150ms ease, transform 300ms var(--spring);
-}
-
-.play-button:active:not(:disabled) {
-  transform: scale(0.96);
-  transition-duration: 120ms;
-}
-
-/* O ícone troca com um pequeno "pop" a cada play/pause. */
-.play-button .icon {
-  animation: pop 380ms var(--spring);
-}
-
-.play-button:disabled {
-  cursor: progress;
-  opacity: 0.85;
-}
-
-.play-button.playing {
-  animation: breathe 3.6s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 180, 94, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgba(255, 180, 94, 0);
-  }
-}
-
-.icon {
-  width: 24px;
-  height: 24px;
-  fill: currentColor;
-  flex: none;
-}
-
-/* Cartão de destaque: o que está tocando + Tocar/Pausar. */
-.hero {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 20px 16px 16px;
-  border: 1px solid var(--card-border);
-  border-radius: 24px;
-  /* Sem backdrop-filter: o blur sobre o fundo fixo custava muita GPU. Fundo mais opaco no lugar. */
-  background: rgba(37, 30, 61, 0.88);
-  text-align: center;
-}
-
-.hero h2 {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.hero .play-button {
-  margin-top: 16px;
-}
-
-/* Seção "inset grouped": título pequeno acima, grupo arredondado, nota abaixo. */
-.section h2 {
-  margin: 0 0 8px 16px;
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
+/* Cartões (vidro): grupo = título, escolha e volume da mesma fonte de som. */
 .group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px;
-  border: 1px solid var(--card-border);
+  gap: 12px;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius);
-  background: rgba(37, 30, 61, 0.88);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.group h2 {
+  margin: 0 0 0 4px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .footer {
-  margin: 8px 16px 0;
-  color: var(--text-muted);
+  margin: 0 4px;
+  color: var(--muted);
   font-size: 0.8125rem;
 }
 
-.footer-row {
-  display: flex;
-  padding-right: 8px;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.footer-row .footer {
-  flex: 1;
-}
-
-.art {
-  width: 96px;
-  height: auto;
-  flex: none;
-  margin-top: 4px;
-}
-
-.divider {
-  width: 100%;
-  height: 1px;
-  margin: 8px 0;
-  border: 0;
-  background: var(--separator);
-}
-
-/* Grupo segmentado (role="radiogroup") */
+/* Segmentado (role="radiogroup"). Seleção neutra e clara: o acento fica reservado ao "tocando". */
 .segmented {
   display: grid;
   grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
-  gap: 6px;
-  padding: 4px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.07);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .option {
@@ -272,23 +246,21 @@ body::before {
   justify-content: center;
   min-height: 44px;
   padding: 8px 6px;
-  border-radius: 10px;
+  border-radius: 9px;
   text-align: center;
   font-size: 0.9375rem;
   font-weight: 500;
   user-select: none;
-  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out),
-    transform 300ms var(--spring);
-}
-
-.option:active input:not(:checked) + span {
-  transform: scale(0.95);
+  transition:
+    background-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
 }
 
 .option input:checked + span {
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
+  background: var(--content);
+  color: var(--bg);
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
 /* O foco fica no rádio escondido; o contorno vai para o texto visível. */
@@ -301,46 +273,27 @@ body::before {
   outline-offset: 2px;
 }
 
-/* Sliders de volume */
-.slider-row {
-  padding: 0 4px;
-}
-
-.slider-line {
-  display: flex;
+/* Volume da fonte: "Volume ——o—— 30%" numa linha só. */
+.level {
+  display: grid;
+  grid-template-columns: auto 1fr 3.2ch;
   align-items: center;
-  gap: 10px;
-}
-
-.slider-line input[type='range'] {
-  flex: 1;
-  min-width: 0;
-}
-
-.speaker {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.label-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
   gap: 12px;
-  margin-bottom: 0;
+  padding: 0 4px;
+  color: var(--muted);
+  font-size: 0.9375rem;
 }
 
-.label-row output {
-  color: var(--text-muted);
+.level output {
+  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
+.level:has(input:disabled) {
+  opacity: 0.45;
+}
+
+/* Sliders */
 input[type='range'] {
   -webkit-appearance: none;
   appearance: none;
@@ -353,26 +306,32 @@ input[type='range'] {
   cursor: pointer;
 }
 
+input[type='range']:disabled {
+  cursor: default;
+}
+
 input[type='range']::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(
-    to right,
-    var(--accent) var(--fill, 50%),
-    var(--track) var(--fill, 50%)
-  );
+  background: linear-gradient(to right, var(--content) var(--fill, 50%), var(--track) var(--fill, 50%));
 }
 
 input[type='range']::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  margin-top: -11px;
-  border: 3px solid var(--bg-top);
+  width: 26px;
+  height: 26px;
+  margin-top: -10px;
+  border: 0;
   border-radius: 50%;
-  background: var(--accent);
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 250ms var(--spring);
+}
+
+input[type='range']:active:not(:disabled)::-webkit-slider-thumb {
+  transform: scale(1.15);
 }
 
 input[type='range']::-moz-range-track {
@@ -384,33 +343,17 @@ input[type='range']::-moz-range-track {
 input[type='range']::-moz-range-progress {
   height: 6px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--content);
 }
 
 input[type='range']::-moz-range-thumb {
   box-sizing: border-box;
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--bg-top);
+  width: 26px;
+  height: 26px;
+  border: 0;
   border-radius: 50%;
-  background: var(--accent);
-}
-
-/* O polegar cresce com mola enquanto é arrastado. */
-input[type='range']::-webkit-slider-thumb {
-  transition: transform 250ms var(--spring);
-}
-
-input[type='range']:active::-webkit-slider-thumb {
-  transform: scale(1.18);
-}
-
-input[type='range']::-moz-range-thumb {
-  transition: transform 250ms var(--spring);
-}
-
-input[type='range']:active::-moz-range-thumb {
-  transform: scale(1.18);
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 
 input[type='range']:focus-visible {
@@ -418,86 +361,123 @@ input[type='range']:focus-visible {
   border-radius: 999px;
 }
 
-/* Botão em linha, estilo lista: ocupa a largura do grupo, texto na cor de ação. */
-.row-button {
-  min-height: 44px;
-  padding: 10px 12px;
+/*
+ * Base de reprodução: camada funcional flutuante (único lugar com o vidro mais forte), ao alcance
+ * do polegar. Conteúdo rola por baixo dela (materials.md: vidro só em controles, nunca no conteúdo).
+ */
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(calc(100% - 24px), 496px);
+  height: 72px;
+  padding: 8px 20px 8px 8px;
+  border: 1px solid var(--glass-border);
+  border-radius: 36px;
+  background: rgba(29, 24, 48, 0.7);
+  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(28px) saturate(1.5);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: dock-in 600ms var(--ease-out) both;
+}
+
+.dock-volume {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.speaker {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Tocar / Pausar */
+.play-button {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  padding: 0;
   border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    transform 300ms var(--spring);
 }
 
-.row-button {
-  transition: background-color 200ms var(--ease-out), transform 300ms var(--spring);
+.play-button:active:not(:disabled) {
+  transform: scale(0.92);
+  transition-duration: 120ms;
 }
 
-.row-button:active {
-  background: rgba(255, 255, 255, 0.08);
-  transform: scale(0.98);
+.play-button:disabled {
+  cursor: progress;
+  opacity: 0.85;
 }
 
-/* Acorde em destaque */
-.chord {
-  margin: 0;
-  color: var(--accent);
-  font-size: clamp(2.75rem, 14vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  /* Recriado a cada troca de acorde (key no JSX): entra subindo e clareando. */
-  animation: chord-in 450ms var(--ease-out);
+/* Respira devagar enquanto toca: único movimento contínuo da tela. */
+.play-button.playing {
+  animation: breathe 3.6s ease-in-out infinite;
 }
 
-.details {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.9375rem;
+.icon {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(26, 18, 5, 0.25);
+  border-top-color: var(--accent-text);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
 }
 
 /* Mensagem de erro */
 .alert {
-  animation: rise 350ms var(--spring);
   margin: 0;
   padding: 12px 16px;
-  border: 1px solid var(--danger);
-  border-radius: 12px;
-  background: rgba(255, 155, 143, 0.08);
-  color: var(--danger);
+  border: 1px solid var(--signal);
+  border-radius: 14px;
+  background: rgba(29, 24, 48, 0.85);
+  color: var(--signal);
+  animation: rise 350ms var(--spring);
 }
 
-/* Entrada escalonada: cada bloco sobe e aparece em sequência ao abrir o app. */
-.app > * {
-  animation: rise 600ms var(--ease-out) both;
-}
-
-.app > :nth-child(2) { animation-delay: 60ms; }
-.app > :nth-child(3) { animation-delay: 120ms; }
-.app > :nth-child(4) { animation-delay: 180ms; }
-.app > :nth-child(5) { animation-delay: 240ms; }
-.app > :nth-child(6) { animation-delay: 300ms; }
-.app > :nth-child(7) { animation-delay: 360ms; }
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.98);
+@keyframes breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 180, 94, 0.4);
   }
-  to {
-    opacity: 1;
-    transform: none;
+  50% {
+    box-shadow: 0 0 0 12px rgba(255, 180, 94, 0);
   }
 }
 
 @keyframes chord-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.96);
-    filter: blur(4px);
+    transform: translateY(10px) scale(0.96);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
@@ -506,10 +486,21 @@ input[type='range']:focus-visible {
   }
 }
 
-@keyframes pop {
+@keyframes dock-in {
   from {
     opacity: 0;
-    transform: scale(0.5) rotate(-20deg);
+    transform: translate(-50%, 24px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -517,17 +508,48 @@ input[type='range']:focus-visible {
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (hover: hover) {
   .play-button:hover:not(:disabled) {
-    background: var(--accent-hover);
+    background: #ffc37d;
   }
 
-  .row-button:hover {
-    background: rgba(255, 255, 255, 0.06);
+  .icon-button:hover {
+    background: rgba(255, 255, 255, 0.16);
   }
 
-  .option:hover span {
-    background: rgba(255, 255, 255, 0.08);
+  .option:hover input:not(:checked) + span {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Sem transparência (ajuste do sistema): vidro vira cor sólida, mesma hierarquia. */
+@media (prefers-reduced-transparency: reduce) {
+  .group,
+  .dock,
+  .icon-button {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Contraste aumentado: bordas e trilhos mais fortes, texto secundário mais claro. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #e6e0f0;
+    --glass-border: #8b81ad;
+    --track: #b5acd0;
+  }
+
+  .group,
+  .dock {
+    background: var(--surface);
   }
 }
 
@@ -538,14 +560,5 @@ input[type='range']:focus-visible {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
-  }
-}
-
-/* Contraste aumentado: bordas e trilhos mais fortes, texto secundário mais claro. */
-@media (prefers-contrast: more) {
-  :root {
-    --text-muted: #e6e0f0;
-    --card-border: #8b81ad;
-    --track: #a89fc4;
   }
 }
